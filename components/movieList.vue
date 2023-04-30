@@ -11,23 +11,34 @@ const totalPages = ref<number>(1)
 const movies = ref<Movies[]>([])
 
 
-const firstSlug = ref<string>('movies')
+const firstSlug = ref<string>('movie')
 const secondSlug = ref<string>('top_rated')
+const query = ref<string>('')
+
 
 const changeSlugSelect = ref<boolean>(false)
 const showSlugSelect = ref<boolean>(true)
 
-const {data: list} = await useLazyAsyncData<PageResults<Movies>>(
+const {data: list} : {data: PageResults<Movies>} = await useLazyAsyncData(
     "results",
     () =>
-        $fetch(`/api/${firstSlug.value}/${secondSlug.value}/${page.value}`),
+        $fetch(`${config.public['apiUrl']}/${firstSlug.value}/${secondSlug.value}`,
+            {
+                params: {
+                    api_key: config.public['apiKey'],
+                    language: config.public['apiLanguage'],
+                    query: query.value,
+                    page: page.value
+                },
+            }
+        ),
     {
         watch: [page, changeSlugSelect],
     }
 );
 
 
-watch(list, (list) => {
+watch(list, (list: PageResults<Movies>) => {
     if (list?.results) {
         list?.results.forEach((movie: Movies) => {
             if (movie.poster_path) {
@@ -45,23 +56,25 @@ function checkPosterPath(posterPath: string | null): string {
     return 'https://dummyimage.com/150x150/ffffff/000&text=TMDB'
 }
 
-function changeFirstSlug(query: string) {
-    if (query.length < 3) {
+function changeFirstSlug(searchText: string) {
+    if (searchText.length < 3) {
         showSlugSelect.value = true
         return
     }
     showSlugSelect.value = false
     movies.value = []
-    firstSlug.value = 'search_movie'
-    secondSlug.value = query
+    firstSlug.value = 'search'
+    secondSlug.value = 'movie'
+    query.value = searchText
     page.value = 1
     changeSlugSelect.value = !changeSlugSelect.value
 }
 
 function clearFirstSlug() {
     movies.value = []
-    firstSlug.value = 'movies'
+    firstSlug.value = 'movie'
     secondSlug.value = 'top_rated'
+    query.value = ''
     showSlugSelect.value = true
     page.value = 1
     changeSlugSelect.value = !changeSlugSelect.value
@@ -77,7 +90,7 @@ function changeSecondSlug() {
 }
 
 const ionInfinite = (ev: IonInfiniteCustomEvent) => {
-    if (list.value !== null && totalPages.value > page.value + 1) {
+    if (totalPages.value > page.value + 1) {
         page.value++;
     }
     setTimeout(() => ev.target.complete(), 500);

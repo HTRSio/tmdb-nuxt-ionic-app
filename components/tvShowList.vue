@@ -1,8 +1,9 @@
 <script lang="ts" setup>
 import {ref} from 'vue'
 import type {PageResults, TvShows} from "~/types"
-import {tvSharp} from "ionicons/icons";
 import ListItem from "~/components/listItem.vue";
+
+const config = useRuntimeConfig()
 
 const page = ref<number>(1)
 const totalPages = ref<number>(1)
@@ -11,20 +12,31 @@ const tvShows = ref<TvShows[]>([])
 
 const firstSlug = ref<string>('tv')
 const secondSlug = ref<string>('top_rated')
+const query = ref<string>('')
+
 const changeSlugSelect = ref<boolean>(false)
 const showSlugSelect = ref<boolean>(true)
 
-const {data: list} = await useLazyAsyncData<PageResults<TvShows>>(
+const {data: list}: { data: PageResults<TvShows> } = await useLazyAsyncData(
     "results",
     () =>
-        $fetch(`/api/${firstSlug.value}/${secondSlug.value}/${page.value}`),
+        $fetch(`${config.public['apiUrl']}/${firstSlug.value}/${secondSlug.value}`,
+            {
+                params: {
+                    api_key: config.public['apiKey'],
+                    language: config.public['apiLanguage'],
+                    query: query.value,
+                    page: page.value
+                },
+            }
+        ),
     {
         watch: [page, changeSlugSelect],
     }
 );
 
 
-watch(list, (list) => {
+watch(list, (list: PageResults<TvShows>) => {
     if (list?.results) {
         list?.results.forEach((tvShow: TvShows) => {
             if (tvShow.poster_path) {
@@ -44,15 +56,16 @@ function checkPosterPath(posterPath: string | null): string {
     return 'https://dummyimage.com/150x150/ffffff/000&text=TMDB'
 }
 
-function changeFirstSlug(query: string) {
-    if (query.length < 3) {
+function changeFirstSlug(searchText: string) {
+    if (searchText.length < 3) {
         showSlugSelect.value = true
         return
     }
     showSlugSelect.value = false
     tvShows.value = []
-    firstSlug.value = 'search_tv'
-    secondSlug.value = query
+    firstSlug.value = 'search'
+    secondSlug.value = 'tv'
+    query.value = searchText
     page.value = 1
     changeSlugSelect.value = !changeSlugSelect.value
 }
@@ -76,7 +89,7 @@ function changeSecondSlug() {
 }
 
 const ionInfinite = (ev: IonInfiniteCustomEvent) => {
-    if (list.value !== null && totalPages.value > page.value + 1) {
+    if (totalPages.value > page.value + 1) {
         page.value++;
     }
     setTimeout(() => ev.target.complete(), 500);
@@ -100,7 +113,7 @@ const ionInfinite = (ev: IonInfiniteCustomEvent) => {
             </ion-item>
             <ion-item v-for="tvShow in tvShows" :key="tvShow.id" button detail :routerLink="`/tvshow/${tvShow.id}`">
                 <ListItem :title="tvShow.name" :poster-path="checkPosterPath(tvShow.poster_path)"
-                               :overview="tvShow.overview"/>
+                          :overview="tvShow.overview"/>
             </ion-item>
         </ion-list>
         <ion-infinite-scroll @ionInfinite="ionInfinite">

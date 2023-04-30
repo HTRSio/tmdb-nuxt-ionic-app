@@ -27,7 +27,7 @@ const props = defineProps({
     <ion-thumbnail slot="start">
         <img
                 :alt="title"
-                :src="`${config.imageUrl}/w500${posterPath}`"
+                :src="`${config.public['imageUrl']}/w500${posterPath}`"
         />
     </ion-thumbnail>
     <ion-label>
